@@ -1,0 +1,6 @@
+site name;site name in russian;txt file report directory;ip and port;parameter amount;pdf file report directory;columns names;
+vzu_chern;ВЗУ Чернь;../reports;192.168.236.50:503;6;x://Site reports;Скважина 1, м3:Скважина 2, м3:Скважины всего, м3:Выход 1, м3:Выход 2, м3:Выход всего, м3;
+
+
+
+

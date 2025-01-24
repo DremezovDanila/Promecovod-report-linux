@@ -16,91 +16,114 @@ class Pdf1(FPDF):
 
     #  Method creating report in PDF.
     #  table_data comprises list of data divided into columns and rows without '/n' in the end of rows.
-    def create_report(self, table_data: list[list[Any, ...], ...]):
-        if type(table_data) != list or len(table_data) <= 1:
-            #  data includes table head and table contents.
-            data = [['Data', 'is', 'wrong'], [0, 0, 0]]
-        else:
-            data = [[el for el in row] for row in table_data]
+    def create_report(self, site_report_data: list[list[str]], site_params: list):
+        if type(site_report_data) != list or len(site_report_data) <= 1:
+            #  data variable includes table head and table contents.
+            site_report_data = [['Data', 'is', 'wrong'], [0, 0, 0]]
         date_and_time = datetime.datetime.now()
         #  Initialise list of file head.
-        report_head = data.pop(0)
+        report_head = site_report_data.pop(0)
         #  Initialise list of file content.
-        report_content = data
+        report_content = site_report_data
         #  Formatting pdf document.
         left_margin, top_margin, right_margin = 5, 5, -5
         margins = (left_margin, top_margin, right_margin)
-        row_height = 5
+        row_height = 6.55
         self.set_margins(left_margin, top_margin, right_margin)
         cur_x, cur_y = left_margin, top_margin
+        self.set_xy(cur_x, cur_y)
         #  Download the font supporting Unicode and set it. *It has to be added before used.
-        self.add_font("font_1", "", r"..\etc\font\ARIALUNI.ttf")
+        #self.add_font("font_1", "", r"../etc/font/ARIALUNI.TTF")
         #  Create the first page.
         self.add_page()
         #  Filling in general information.
         #  First line with current date on the left and company name on the right.
-        self.set_font("font_1", size=14)
+        self.set_font("Arial", size=14)
         self.cell(w=(self.w - (margins[0] + abs(margins[2]))) / 2, h=self.font_size,
-                  txt="{:%Y.%m.%d}".format(date_and_time),
-                  align="L")
-        self.cell(w=(self.w - (margins[0] + abs(margins[2]))) / 2, h=self.font_size, txt='ООО "ПромЭкоВод"', align="R",
-                  new_x="LMARGIN",
-                  new_y="NEXT")
-        #  Padding.
-        self.cell(w=self.w, h=10, new_x="LMARGIN", new_y="NEXT")
+                  txt="{:%Y.%m.%d}".format(date_and_time), ln=0, align="L")
+        #self.cell(w=(self.w - (margins[0] + abs(margins[2]))) / 2, h=self.font_size, txt='ООО "ПромЭкоВод"', align="R",
+        self.cell(w=(self.w - (margins[0] + abs(margins[2]))) / 2, h=self.font_size, txt='LLC "Promecovod"', ln=0,
+                  align="R")
+        cur_x = left_margin
+        cur_y += 10
+        self.set_xy(cur_x, cur_y)
         #  Site name.
-        self.set_font("font_1", size=20)
-        self.cell(self.w - 20, self.font_size * 1.5, txt=table_data[0][1], align="C", new_x="LEFT",
-                  new_y="NEXT")
+        self.set_font("Arial", size=20)
+        self.cell(self.w - 20, self.font_size * 1.5, txt=site_params[1], ln=0, align="C")
+        cur_x = left_margin
+        cur_y += 10
+        self.set_xy(cur_x, cur_y)
         #  Table title.
-        self.set_font("font_1", size=14)
-        self.cell(self.w - 20, self.font_size * 2, txt=f"Отчет по суточным расходам воды и электроэнергии",
-                  align="C", new_x="LEFT", new_y="NEXT")
-        self.cell(w=self.w, h=2, new_x="LMARGIN", new_y="NEXT")
-        #  Draw a table.
+        self.set_font("Arial", size=14)
+        #self.cell(self.w - 20, self.font_size * 2, txt=f"Отчет по суточным расходам воды и электроэнергии",
+        self.cell(self.w - 20, self.font_size * 2, txt=f"Report on daily consumption of water and energy", ln=0,
+                  align="C")
+        cur_x = left_margin
+        cur_y += 10
+        self.set_xy(cur_x, cur_y)
+        #  Drawing a table.
         #  Find widths of columns in table using specified font.
-        self.set_font("font_1", size=14)
-        #  Minimum column width is 20, else the meaning of a number of lines is rough
-        #  col_width equals to a width of the longest meaning in a respective column of the table.
+        self.set_font("Arial", size=14)
+        #  Minimum column width is 20, else the meaning of a number of lines is rough.
+        #  Adding some width to meanings of table data.
+        for i in range(len(report_content)):
+            for j in range(len(report_head)):
+                if j == 0:
+                    report_content[i][j] = report_content[i][j].rjust(3, " ")
+                elif j == 1:
+                    report_content[i][j] = report_content[i][j].rjust(12, " ")
+                else:
+                    #  Check column width coefficient for adequacy.
+                    if int(site_params[7]) < 0:
+                        column_width_coef = 0
+                    elif int(site_params[7]) > 30:
+                        column_width_coef = 30
+                    else:
+                        column_width_coef = int(site_params[7])
+                    report_content[i][j] = report_content[i][j].rjust(6 + column_width_coef, " ")
+        #  col_width equals to the width of the largest meaning in a respective column of the table.
         report_elem_width = list()
         for i in range(len(report_content)):
             report_elem_width.append([])
             for j in range(len(report_head)):
-                report_elem_width[i].append(self.get_string_width(report_content[i][j]) + 2)
+                report_elem_width[i].append(self.get_string_width(report_content[i][j]))
         #  Find the longest lines in columns and assign these values to head titles length.
         #  Reverse massive of contents length (columns into rows).
         report_elem_width_rev = [[0 for j in range(len(report_content))] for i in range(len(report_head))]
         for i in range(len(report_content)):
             for j in range(len(report_head)):
                 report_elem_width_rev[j][i] = report_elem_width[i][j]
+        #  Finding widths of column name cells.
         report_head_width = list()
         for i in range(len(report_head)):
             #  Indents from edges of the cell equal 2.
-            report_head_width.append(max(report_elem_width_rev[i]) + 2)
+            report_head_width.append(max(report_elem_width_rev[i]) + 4.0)
         #  Find how many lines head titles take.
         report_head_lines_num = list()
         report_head_len = list()
         for i in range(len(report_head)):
-            report_head_len.append(self.get_string_width(report_head[i]))
+            report_head_len.append(self.get_string_width(report_head[i]) + 2.0)
             #  How many lines a string takes.
-            if report_head_len[i] > 0 and report_head_len[i] > report_head_width[i] - 2 and report_head_width[i] > 2:
-                report_head_lines_num.append(math.ceil(report_head_len[i] / (report_head_width[i] - 2)) + 2)
+            #if report_head_len[i] > 0 and report_head_len[i] > report_head_width[i] - 2 and report_head_width[i] > 2:
+                #report_head_lines_num.append(math.ceil(report_head_len[i] / (report_head_width[i] - 2)) + 2)
+            if 0 < report_head_width[i] < report_head_len[i]:
+                report_head_lines_num.append(math.ceil(report_head_len[i] / report_head_width[i]))
             else:
-                report_head_lines_num.append(3)
+                report_head_lines_num.append(1)
         #  Draw a table head.
         #  Calculate how many Line Feed characters are used in every head cell relating to the highest head cell.
         for i in range(len(report_head)):
             self.multi_cell(w=report_head_width[i],
                             h=row_height,
-                            txt="\n" + report_head[i] + "\n" * (
-                                        max(report_head_lines_num) - report_head_lines_num[i] + 2),
+                            txt="\n" + report_head[i] + "\n" * 2 + "\n" * (
+                                        max(report_head_lines_num) - report_head_lines_num[i]),
                             border=1,
                             align='C')
             cur_x += report_head_width[i]
             self.set_xy(cur_x, cur_y)
         cur_x = left_margin
         #  Make top indent according to number of lines in a head cell.
-        cur_y = top_margin + row_height * max(report_head_lines_num)
+        cur_y += row_height * (max(report_head_lines_num) + 2)
         self.set_xy(cur_x, cur_y)
         for i in range(len(report_content)):
             for j in range(len(report_head)):
@@ -110,15 +133,14 @@ class Pdf1(FPDF):
             cur_x = left_margin
             cur_y += row_height
             self.set_xy(cur_x, cur_y)
-        self.output("new_pdf.pdf")
 
 
     #  Override footer method so that it numerates pages.
     def footer(self):
         self.set_y(-15)
         self.set_x(10)
-        self.set_font("font_1", "", 12)
-        self.cell(w=self.w - 20, h=10, txt='Стр. %s из ' % self.page_no() + '{nb}', align='C')
+        self.set_font(family="Arial", style="", size=12)
+        self.cell(w=self.w - 20, h=10, txt='Page %s from ' % self.page_no() + '{nb}', align='C')
 
 
 #  Global variables.
@@ -271,7 +293,7 @@ if __name__ == "__main__":
                                 print("test 1.5")
                                 site_row_params_list = config_list[num + 1].split(';')
                                 site_row_params_list.pop(-1)
-                                if len(site_row_params_list) == 7:
+                                if len(site_row_params_list) == 8:
                                     print("test 1.6")
                                     sites_row_params.append(site_row_params_list)
             else:
@@ -284,10 +306,10 @@ if __name__ == "__main__":
                 site_row_params_off = False
                 site_params = list()
                 try:
-                    site_params.append(site_row_params[0])  # Site name.
-                    site_params.append(site_row_params[1])  # Site name in Russian.
-                    site_params.append(site_row_params[2])  # Report text file directory.
-                    site_params.append(site_row_params[3])  # IP address and TCP port.
+                    site_params.append(site_row_params[0])  #  Site name.
+                    site_params.append(site_row_params[1])  #  Site name in Russian.
+                    site_params.append(site_row_params[2])  #  Report text file directory.
+                    site_params.append(site_row_params[3])  #  IP address and TCP port.
                     site_ip_str = site_row_params[3].split(':')[0]
                     site_tcp_port_str = site_row_params[3].split(':')[1]
                     site_ip_row_list = site_ip_str.split('.')
@@ -299,11 +321,13 @@ if __name__ == "__main__":
                     else:
                         site_row_params_off = True
                     site_tcp_port = int(site_tcp_port_str)
-                    site_params.append(int(site_row_params[4]))  # Parameter number.
-                    site_params.append(site_row_params[5])  # PDF report directory.
-                    site_params.append(site_row_params[6])  # Columns names.
+                    site_params.append(int(site_row_params[4]))  #  Parameter number.
+                    site_params.append(site_row_params[5])  #  PDF report directory.
+                    site_params.append(site_row_params[6])  #  Columns names.
                     if len(site_row_params[6].split(":")) != site_params[4]:
                         site_row_params_off = True
+                    site_params.append(int(site_row_params[7]))  #  Column width coefficient (int, 0 - 30).
+
                     print("test 1.8")
                 except:
                     print("test 1.8.1")
@@ -322,7 +346,7 @@ if __name__ == "__main__":
                 site_report_list2 = [['' for column in range(len(site_params[6].split(":")) + 2)]
                                      for row in range(site_report_days_in_month + 1)]
                 #  Get column names from configuration file.
-                site_report_col_names = ["Номер", "Дата"]
+                site_report_col_names = ["N", "Date"]
                 site_report_col_names = site_report_col_names + site_params[6].split(":")
                 #  Fill the first line in a site report.
                 for col_num in range(len(site_report_col_names)):
@@ -335,8 +359,8 @@ if __name__ == "__main__":
                 site_report_dir = f"{site_params[2]}/{site_params[0]}_{report_last_year}_{report_last_month}"
                 #  Initialise MBTCP connection.
                 print(site_params[3].split(":")[0], site_params[3].split(":")[1])
-                site_mbtcp_client = ModbusClient(host="192.168.236.50",  #site_params[3].split(":")[0],
-                                                 port=503,   #int(site_params[3].split(":")[1]),
+                site_mbtcp_client = ModbusClient(host=site_params[3].split(":")[0],
+                                                 port=int(site_params[3].split(":")[1]),
                                                  unit_id=1,
                                                  timeout=8.0,
                                                  auto_open=True,
@@ -399,6 +423,24 @@ if __name__ == "__main__":
                         site_report_file.write("\n")
 
             #  PDF document printing.
+            for site_params in sites_params:
+                site_report_dir = f"{site_params[2]}/{site_params[0]}_{report_last_year}_{report_last_month}"
+                if os.path.isfile(site_report_dir):
+                    with open(site_report_dir, "r", encoding="UTF-8") as site_report_file:
+                        site_report_data_list = site_report_file.readlines()
+                        site_report_data_list2 = list()
+                        for row in site_report_data_list:
+                            site_report_data_list2.append(row.split(";")[:-1])
+                    #  Declare instance of Pdf1.
+                    report_pdf = Pdf1()
+                    report_pdf.alias_nb_pages()
+                    report_pdf.create_report(site_report_data_list2, site_params)
+                    if os.path.isdir("../pdf reports"):
+                        report_pdf.output(f"../pdf reports/{site_params[1]}.pdf")
+                    else:
+                        os.makedirs("../pdf reports")
+                        report_pdf.output(f"../pdf reports/{site_params[1]}.pdf")
+
             time.sleep(1.0)
 
 
