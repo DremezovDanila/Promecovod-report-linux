@@ -1,6 +1,7 @@
 from pyModbusTCP.client import ModbusClient
 from pyModbusTCP import utils
-from fpdf import FPDF
+#from fpdf import FPDF
+import fpdf
 import time
 import datetime
 import os
@@ -12,58 +13,56 @@ import math
 
 
 #  Create new class for PDF document based on original class from FPDF lib.
-class Pdf1(FPDF):
+class Pdf1(fpdf.FPDF):
 
     #  Method creating report in PDF.
     #  table_data comprises list of data divided into columns and rows without '/n' in the end of rows.
-    def create_report(self, site_report_data: list[list[str]], site_params: list):
-        if type(site_report_data) != list or len(site_report_data) <= 1:
+    def create_report(self, report_data: list[list[str]], report_params: list):
+        if type(report_data) != list or len(report_data) <= 1:
             #  data variable includes table head and table contents.
-            site_report_data = [['Data', 'is', 'wrong'], [0, 0, 0]]
+            report_data = [['Data', 'is', 'wrong'], [0, 0, 0]]
         date_and_time = datetime.datetime.now()
         #  Initialise list of file head.
-        report_head = site_report_data.pop(0)
+        report_head = report_data.pop(0)
         #  Initialise list of file content.
-        report_content = site_report_data
+        report_content = report_data
         #  Formatting pdf document.
         left_margin, top_margin, right_margin = 5, 5, -5
         margins = (left_margin, top_margin, right_margin)
-        row_height = 6.55
+        row_height = 6.2
         self.set_margins(left_margin, top_margin, right_margin)
         cur_x, cur_y = left_margin, top_margin
         self.set_xy(cur_x, cur_y)
-        #  Download the font supporting Unicode and set it. *It has to be added before used.
-        #self.add_font("font_1", "", r"../etc/font/ARIALUNI.TTF")
         #  Create the first page.
         self.add_page()
+        #  Download the font supporting Unicode and set it. *It has to be added before used.
+        self.add_font(family="NotoSans", style="", fname=r"NotoSans-Regular.ttf", uni=True)
         #  Filling in general information.
         #  First line with current date on the left and company name on the right.
-        self.set_font("Arial", size=14)
+        self.set_font(family="NotoSans", size=14)
         self.cell(w=(self.w - (margins[0] + abs(margins[2]))) / 2, h=self.font_size,
                   txt="{:%Y.%m.%d}".format(date_and_time), ln=0, align="L")
-        #self.cell(w=(self.w - (margins[0] + abs(margins[2]))) / 2, h=self.font_size, txt='ООО "ПромЭкоВод"', align="R",
-        self.cell(w=(self.w - (margins[0] + abs(margins[2]))) / 2, h=self.font_size, txt='LLC "Promecovod"', ln=0,
+        self.cell(w=(self.w - (margins[0] + abs(margins[2]))) / 2, h=self.font_size, txt='ООО "Промэковод"', ln=0,
                   align="R")
         cur_x = left_margin
         cur_y += 10
         self.set_xy(cur_x, cur_y)
         #  Site name.
-        self.set_font("Arial", size=20)
-        self.cell(self.w - 20, self.font_size * 1.5, txt=site_params[1], ln=0, align="C")
+        self.set_font("NotoSans", size=20)
+        self.cell(self.w - 20, self.font_size * 1.5, txt=report_params[1], ln=0, align="C")
         cur_x = left_margin
         cur_y += 10
         self.set_xy(cur_x, cur_y)
         #  Table title.
-        self.set_font("Arial", size=14)
-        #self.cell(self.w - 20, self.font_size * 2, txt=f"Отчет по суточным расходам воды и электроэнергии",
-        self.cell(self.w - 20, self.font_size * 2, txt=f"Report on daily consumption of water and energy", ln=0,
+        self.set_font("NotoSans", size=14)
+        self.cell(self.w - 20, self.font_size * 2, txt=f"Отчет по суточным расходам воды и электроэнергии", ln=0,
                   align="C")
         cur_x = left_margin
         cur_y += 10
         self.set_xy(cur_x, cur_y)
         #  Drawing a table.
         #  Find widths of columns in table using specified font.
-        self.set_font("Arial", size=14)
+        self.set_font("NotoSans", size=14)
         #  Minimum column width is 20, else the meaning of a number of lines is rough.
         #  Adding some width to meanings of table data.
         for i in range(len(report_content)):
@@ -104,8 +103,6 @@ class Pdf1(FPDF):
         for i in range(len(report_head)):
             report_head_len.append(self.get_string_width(report_head[i]) + 2.0)
             #  How many lines a string takes.
-            #if report_head_len[i] > 0 and report_head_len[i] > report_head_width[i] - 2 and report_head_width[i] > 2:
-                #report_head_lines_num.append(math.ceil(report_head_len[i] / (report_head_width[i] - 2)) + 2)
             if 0 < report_head_width[i] < report_head_len[i]:
                 report_head_lines_num.append(math.ceil(report_head_len[i] / report_head_width[i]))
             else:
@@ -139,8 +136,8 @@ class Pdf1(FPDF):
     def footer(self):
         self.set_y(-15)
         self.set_x(10)
-        self.set_font(family="Arial", style="", size=12)
-        self.cell(w=self.w - 20, h=10, txt='Page %s from ' % self.page_no() + '{nb}', align='C')
+        self.set_font(family="NotoSans", size=12)
+        self.cell(w=self.w - 20, h=10, txt='Страница %s из ' % self.page_no() + '{nb}', align='C')
 
 
 #  Global variables.
@@ -199,6 +196,9 @@ report_cur_datetime = datetime.datetime.now()
 #  Log parameters.
 logs_num_line = 0
 logs_separator = " " * 4
+
+#  Set new directory with fonts for FPDF library.
+fpdf.set_global("SYSTEM_TTFONTS", os.path.join(os.path.dirname(__file__), f"{os.pardir}/etc/fonts"))
 
 #  Start another thread for processing console commands.
 th = Thread(target=operate_program, args=())
@@ -346,7 +346,7 @@ if __name__ == "__main__":
                 site_report_list2 = [['' for column in range(len(site_params[6].split(":")) + 2)]
                                      for row in range(site_report_days_in_month + 1)]
                 #  Get column names from configuration file.
-                site_report_col_names = ["N", "Date"]
+                site_report_col_names = ["№", "Дата"]
                 site_report_col_names = site_report_col_names + site_params[6].split(":")
                 #  Fill the first line in a site report.
                 for col_num in range(len(site_report_col_names)):
@@ -358,7 +358,6 @@ if __name__ == "__main__":
                 #  Get a directory for report text file of a site.
                 site_report_dir = f"{site_params[2]}/{site_params[0]}_{report_last_year}_{report_last_month}"
                 #  Initialise MBTCP connection.
-                print(site_params[3].split(":")[0], site_params[3].split(":")[1])
                 site_mbtcp_client = ModbusClient(host=site_params[3].split(":")[0],
                                                  port=int(site_params[3].split(":")[1]),
                                                  unit_id=1,
@@ -415,8 +414,8 @@ if __name__ == "__main__":
                         logs.write(f"{datetime.datetime.now().strftime('%Y.%m.%d  %H:%M:%S')}{logs_separator}"
                                    f"{site_params[0]} site ModbusTCP poll error.\n")
                 #  Write data into report text file.
-                print("test 1.12")
                 with open(f"{site_params[2]}/{site_params[0]}_{report_last_year}_{report_last_month}", "w", encoding="UTF-8") as site_report_file:
+                    print("test 1.12")
                     for row in site_report_list2:
                         for elem in row:
                             site_report_file.write(f"{elem};")
@@ -424,6 +423,7 @@ if __name__ == "__main__":
 
             #  PDF document printing.
             for site_params in sites_params:
+                print("test 1.13")
                 site_report_dir = f"{site_params[2]}/{site_params[0]}_{report_last_year}_{report_last_month}"
                 if os.path.isfile(site_report_dir):
                     with open(site_report_dir, "r", encoding="UTF-8") as site_report_file:
@@ -433,19 +433,16 @@ if __name__ == "__main__":
                             site_report_data_list2.append(row.split(";")[:-1])
                     #  Declare instance of Pdf1.
                     report_pdf = Pdf1()
+                    #  Set {nb} alias for PDF document footer.
                     report_pdf.alias_nb_pages()
                     report_pdf.create_report(site_report_data_list2, site_params)
-                    if os.path.isdir("../pdf reports"):
-                        report_pdf.output(f"../pdf reports/{site_params[1]}.pdf")
+                    if os.path.isdir(f"../{site_params[5]}/{site_params[1]}"):
+                        report_pdf.output(f"../{site_params[5]}/{site_params[1]}/{site_params[1]}.pdf")
                     else:
-                        os.makedirs("../pdf reports")
-                        report_pdf.output(f"../pdf reports/{site_params[1]}.pdf")
-
+                        os.makedirs(f"../{site_params[5]}/{site_params[1]}")
+                        report_pdf.output(f"../{site_params[5]}/{site_params[1]}/{site_params[1]}.pdf")
+            print("test 1.14")
             time.sleep(1.0)
-
-
-
-
 
 
 
