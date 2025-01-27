@@ -140,25 +140,96 @@ class Pdf1(fpdf.FPDF):
         self.cell(w=self.w - 20, h=10, txt='Страница %s из ' % self.page_no() + '{nb}', align='C')
 
 
+#  Function for checking config file and adding site parameters to a list of site parameters.
+def get_sites_params(config_path: str = "config"):
+    #  Check config text file and get the list of row sites data.
+    if os.path.isfile(config_path):
+        config_file_exist = True
+        print("test 1.2")
+        with open(config_path, "r", encoding="UTF-8") as config_file:
+            print("test 1.3")
+            config_list = config_file.readlines()
+            config_list_len = len(config_list)
+            sites_row_params = list()
+            for num in range(config_list_len):
+                if config_list[num].split(';')[0] == "site name":
+                    print("test 1.4")
+                    if num + 1 <= config_list_len:
+                        print("test 1.5")
+                        site_row_params_list = config_list[num + 1].split(';')
+                        site_row_params_list.pop(-1)
+                        if len(site_row_params_list) == 8:
+                            print("test 1.6")
+                            sites_row_params.append(site_row_params_list)
+    else:
+        config_file_exist = False
+
+    #  Check correctness of row sites data and create a list of sites data.
+    if config_file_exist and len(sites_row_params) > 0:
+        config_params_off = False
+    else:
+        config_params_off = True
+
+    sites_params = list()
+    if not config_params_off:
+        for site_row_params in sites_row_params:
+            print("test 1.7")
+            site_params_off = False
+            site_params = list()
+            try:
+                site_params.append(site_row_params[0])  #  Site name.
+                site_params.append(site_row_params[1])  #  Site name in Russian.
+                site_params.append(site_row_params[2])  #  Report text file directory.
+                site_params.append(site_row_params[3])  #  IP address and TCP port.
+                site_ip_str = site_row_params[3].split(':')[0]
+                int(site_row_params[3].split(':')[1])
+                site_ip_row_list = site_ip_str.split('.')
+                if len(site_ip_row_list) == 4:
+                    for el in site_ip_row_list:
+                        if 0 < int(el) < 255:
+                            pass
+                        else:
+                            site_params_off = True
+                            break
+                else:
+                    site_params_off = True
+                site_params.append(int(site_row_params[4]))  #  Parameter number.
+                site_params.append(site_row_params[5])  #  PDF report directory.
+                site_params.append(site_row_params[6])  #  Columns names.
+                if len(site_row_params[6].split(":")) != site_params[4]:
+                    site_params_off = True
+                site_params.append(int(site_row_params[7]))  #  Column width coefficient (int, 0 - 30).
+                print("test 1.8")
+            except:
+                print("test 1.8.1")
+                site_params_off = True
+            finally:
+                print("test 1.9")
+                if not site_params_off:
+                    sites_params.append(site_params)
+
+    return config_params_off, sites_params
+
+
 #  Global variables.
 finish_main_process: bool = False
-restore_start: bool = False
-restore_ini_txt_name: str = ""
-restore_ini_txt_date: str = ""
-print_start: bool = True
-print_ini_txt_name: str = ""
-print_ini_txt_date: str = ""
+restore_data_start: bool = False
+restore_data_site_name: str = ""
+restore_data_report_date: str = ""
+print_pdf_start: bool = True
+print_pdf_site_name: str = ""
+print_pdf_report_date: str = ""
 command: str = ""
 
 #  Cyclic function implementing console for operating the program.
 def operate_program():
     global finish_main_process
-    global restore_start
-    global restore_ini_txt_name
-    global restore_ini_txt_date
-    global print_start
-    global print_ini_txt_name
-    global print_ini_txt_date
+    global restore_data_start
+    global restore_data_site_name
+    global restore_data_report_date
+    global print_pdf_start
+    global print_pdf_site_name
+    global print_pdf_report_date
     global command
 
     while not finish_main_process:
@@ -170,15 +241,15 @@ def operate_program():
             command = ""
         #  Restore data.
         elif command == "restore" or command == "Restore" or command == "RESTORE":
-            restore_ini_txt_name = str(input("Name of object (ex.:vzu_borodinsky): "))
-            restore_ini_txt_date = str(input("Year and month (ex.:2023_05): "))
-            restore_start = True
+            restore_data_site_name = str(input("Name of object (ex.:vzu_borodinsky): "))
+            restore_data_report_date = str(input("Year and month (ex.:2023_05): "))
+            restore_data_start = True
             command = ""
         #  Print data.
         elif command == "print" or command == "Print" or command == "PRINT":
-            print_ini_txt_name = str(input("Name of object (ex.:vzu_borodinsky): "))
-            print_ini_txt_date = str(input("Year and month (ex.:2023_05): "))
-            print_start = True
+            print_pdf_site_name = str(input("Name of object (ex.:vzu_borodinsky): "))
+            print_pdf_report_date = str(input("Year and month (ex.:2023_05): "))
+            print_pdf_start = True
             command = ""
 
 
@@ -267,75 +338,76 @@ if __name__ == "__main__":
                     cmd_command_2 = subprocess.run(command_2, shell=True, capture_output=True)
                     with open("../logs/logs", "a", encoding="UTF-8") as logs:
                         logs.write(f"{datetime.datetime.now().strftime('%Y.%m.%d  %H:%M:%S')}{logs_separator}"
-                                   f"Create network drive x: {cmd_command_2.stdout}\n")
+                                   f"Create network drive X: {cmd_command_2.stdout}\n")
                 #  Process exception while system command performing in subprocess.
                 except subprocess.CalledProcessError:
                     with open("../logs/logs", "a", encoding="UTF-8") as logs:
                         logs.write(f"{datetime.datetime.now().strftime('%Y.%m.%d  %H:%M:%S')}{logs_separator}"
-                                   f"Error of creating drive x:.\n")
+                                   f"Error of creating drive X:.\n")
             else:
                 with open("../logs/logs", "a", encoding="UTF-8") as logs:
                     logs.write(f"{datetime.datetime.now().strftime('%Y.%m.%d  %H:%M:%S')}{logs_separator}"
                                f"Drive X exists.\n")
 
+            config_params_off, sites_params = get_sites_params()
+
             #  Check config text file and get the list of row sites data.
-            if os.path.isfile(r"config"):
-                print("test 1.2")
-                with open(r"config", "r", encoding="UTF-8") as config_file:
-                    print("test 1.3")
-                    config_list = config_file.readlines()
-                    config_list_len = len(config_list)
-                    sites_row_params = list()
-                    for num in range(config_list_len):
-                        if config_list[num].split(';')[0] == "site name":
-                            print("test 1.4")
-                            if num + 1 <= config_list_len:
-                                print("test 1.5")
-                                site_row_params_list = config_list[num + 1].split(';')
-                                site_row_params_list.pop(-1)
-                                if len(site_row_params_list) == 8:
-                                    print("test 1.6")
-                                    sites_row_params.append(site_row_params_list)
-            else:
-                sites_row_params = list()
+            #if os.path.isfile(r"config"):
+            #    print("test 1.2")
+            #    with open(r"config", "r", encoding="UTF-8") as config_file:
+            #        print("test 1.3")
+            #        config_list = config_file.readlines()
+            #        config_list_len = len(config_list)
+            #        sites_row_params = list()
+            #        for num in range(config_list_len):
+            #            if config_list[num].split(';')[0] == "site name":
+            #                print("test 1.4")
+            #                if num + 1 <= config_list_len:
+            #                    print("test 1.5")
+            #                    site_row_params_list = config_list[num + 1].split(';')
+            #                    site_row_params_list.pop(-1)
+            #                    if len(site_row_params_list) == 8:
+            #                        print("test 1.6")
+            #                        sites_row_params.append(site_row_params_list)
+            #else:
+            #    sites_row_params = list()
 
             #  Check correctness of row sites data and create a list of sites data.
-            sites_params = list()
-            for site_row_params in sites_row_params:
-                print("test 1.7")
-                site_row_params_off = False
-                site_params = list()
-                try:
-                    site_params.append(site_row_params[0])  #  Site name.
-                    site_params.append(site_row_params[1])  #  Site name in Russian.
-                    site_params.append(site_row_params[2])  #  Report text file directory.
-                    site_params.append(site_row_params[3])  #  IP address and TCP port.
-                    site_ip_str = site_row_params[3].split(':')[0]
-                    site_tcp_port_str = site_row_params[3].split(':')[1]
-                    site_ip_row_list = site_ip_str.split('.')
-                    if len(site_ip_row_list) == 4:
-                        site_ip_list = list()
-                        for el in site_ip_row_list:
-                            site_ip_list.append(int(el))
-                        site_ip = site_ip_str
-                    else:
-                        site_row_params_off = True
-                    site_tcp_port = int(site_tcp_port_str)
-                    site_params.append(int(site_row_params[4]))  #  Parameter number.
-                    site_params.append(site_row_params[5])  #  PDF report directory.
-                    site_params.append(site_row_params[6])  #  Columns names.
-                    if len(site_row_params[6].split(":")) != site_params[4]:
-                        site_row_params_off = True
-                    site_params.append(int(site_row_params[7]))  #  Column width coefficient (int, 0 - 30).
-
-                    print("test 1.8")
-                except:
-                    print("test 1.8.1")
-                    site_row_params_off = True
-                finally:
-                    print("test 1.9")
-                    if not site_row_params_off:
-                        sites_params.append(site_params)
+            #sites_params = list()
+            #for site_row_params in sites_row_params:
+            #    print("test 1.7")
+            #    site_row_params_off = False
+            #    site_params = list()
+            #    try:
+            #        site_params.append(site_row_params[0])  #  Site name.
+            #        site_params.append(site_row_params[1])  #  Site name in Russian.
+            #        site_params.append(site_row_params[2])  #  Report text file directory.
+            #        site_params.append(site_row_params[3])  #  IP address and TCP port.
+            #        site_ip_str = site_row_params[3].split(':')[0]
+            #        site_tcp_port_str = site_row_params[3].split(':')[1]
+            #        site_ip_row_list = site_ip_str.split('.')
+            #        if len(site_ip_row_list) == 4:
+            #            site_ip_list = list()
+            #            for el in site_ip_row_list:
+            #                site_ip_list.append(int(el))
+            #            site_ip = site_ip_str
+            #        else:
+            #            site_row_params_off = True
+            #        site_tcp_port = int(site_tcp_port_str)
+            #        site_params.append(int(site_row_params[4]))  #  Parameter number.
+            #        site_params.append(site_row_params[5])  #  PDF report directory.
+            #        site_params.append(site_row_params[6])  #  Columns names.
+            #        if len(site_row_params[6].split(":")) != site_params[4]:
+            #            site_row_params_off = True
+            #        site_params.append(int(site_row_params[7]))  #  Column width coefficient (int, 0 - 30).
+            #        print("test 1.8")
+            #    except:
+            #        print("test 1.8.1")
+            #        site_row_params_off = True
+            #    finally:
+            #        print("test 1.9")
+            #        if not site_row_params_off:
+            #            sites_params.append(site_params)
 
             #  ModbusTCP polling.
             for site_params in sites_params:
@@ -414,7 +486,8 @@ if __name__ == "__main__":
                         logs.write(f"{datetime.datetime.now().strftime('%Y.%m.%d  %H:%M:%S')}{logs_separator}"
                                    f"{site_params[0]} site ModbusTCP poll error.\n")
                 #  Write data into report text file.
-                with open(f"{site_params[2]}/{site_params[0]}_{report_last_year}_{report_last_month}", "w", encoding="UTF-8") as site_report_file:
+                with open(f"{site_params[2]}/{site_params[0]}_{report_last_year}_{report_last_month}", "w",
+                          encoding="UTF-8") as site_report_file:
                     print("test 1.12")
                     for row in site_report_list2:
                         for elem in row:
@@ -443,6 +516,70 @@ if __name__ == "__main__":
                         report_pdf.output(f"../{site_params[5]}/{site_params[1]}/{site_params[1]}.pdf")
             print("test 1.14")
             time.sleep(1.0)
+
+
+            #  Function for printing PDF report from text file.
+            if print_pdf_start:
+                print_pdf_start = False
+                print_report_input_data_ok = False
+                #  Check input console data for relevance.
+                try:
+                    print_pdf_report_date_list = print_pdf_report_date.split("_")
+                    print_pdf_report_date_year = print_pdf_report_date_list[0]
+                    print_pdf_report_date_month = print_pdf_report_date_list[1]
+                    print_pdf_report_date_year_int = int(print_pdf_report_date_year)
+                    print_pdf_report_date_month_int = int(print_pdf_report_date_month)
+                except:
+                    with open("../logs/logs", "a", encoding="UTF-8") as logs:
+                        logs.write(f"{datetime.datetime.now().strftime('%Y.%m.%d  %H:%M:%S')}{logs_separator}"
+                                   f"Incorrect input data for printing PDF report.\n")
+                else:
+                    if len(print_pdf_report_date_list) == 2 and \
+                            len(print_pdf_report_date_year) == 4 and \
+                            (len(print_pdf_report_date_month) == 2 or len(print_pdf_report_date_month) == 1) and \
+                            2022 < print_pdf_report_date_year_int < 2040 and \
+                            (1 <= print_pdf_report_date_month_int <= 12):
+                        print_report_input_data_ok = True
+
+                    else:
+                        with open("../logs/logs", "a", encoding="UTF-8") as logs:
+                            logs.write(f"{datetime.datetime.now().strftime('%Y.%m.%d  %H:%M:%S')}{logs_separator}"
+                                       f"Incorrect date or site name for printing PDF report.\n")
+
+                if print_report_input_data_ok:
+                    #  Get path to text file.
+                    print_report_data_path = os.path.join(os.path.dirname(__file__), f"{os.pardir}/reports/"
+                                                                                         f"{print_pdf_site_name}_{print_pdf_report_date_year_int}_{print_pdf_report_date_month_int}")
+                    if os.path.isfile(print_report_data_path):
+                        with open(print_report_data_path, "r", encoding="UTF-8") as print_report_file:
+                            print_report_data_list = print_report_file.readlines()
+                            print_report_data_list2 = list()
+                            for row in print_report_data_list:
+                                print_report_data_list2.append(row.split(";")[:-1])
+
+                        config_params_off, sites_params = get_sites_params()
+                        print_report_site_params = list()
+                        if not config_params_off:
+                            for site_params in sites_params:
+                                if site_params[0] == print_pdf_site_name:
+                                    print_report_site_params = site_params
+                                    break
+
+                        if print_report_site_params != list():
+                            #  Declare instance of Pdf1.
+                            print_pdf_file = Pdf1()
+                            #  Set {nb} alias for PDF document footer.
+                            print_pdf_file.alias_nb_pages()
+                            print_pdf_file.create_report(print_report_data_list2, print_report_site_params)
+                            if os.path.isdir(f"../{print_report_site_params[5]}/{print_report_site_params[1]}"):
+                                print_pdf_file.output(f"../{print_report_site_params[5]}/{print_report_site_params[1]}/{print_report_site_params[1]}.pdf")
+                            else:
+                                os.makedirs(f"../{print_report_site_params[5]}/{print_report_site_params[1]}")
+                                print_pdf_file.output(f"../{print_report_site_params[5]}/{print_report_site_params[1]}/{print_report_site_params[1]}.pdf")
+
+
+
+
 
 
 
